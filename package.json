@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:static": "vite build --mode singlefile --base ./ --outDir build --emptyOutDir && node scripts/check-offline.mjs build",
     "preview": "vite preview",
     "test": "node src/selftest.js"
   },
@@ -15,6 +16,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.1",
-    "vite": "^6.0.7"
+    "vite": "^6.0.7",
+    "vite-plugin-singlefile": "^2.3.3"
   }
 }
