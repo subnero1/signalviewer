@@ -2,6 +2,7 @@
   "name": "signalviewer",
   "version": "0.1.0",
   "type": "module",
+  "packageManager": "pnpm@11.5.3",
   "scripts": {
     "dev": "vite",
     "build": "vite build --base ./ --outDir build --emptyOutDir",
