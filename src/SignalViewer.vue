@@ -193,11 +193,20 @@ const navPlugin = {
   }
 };
 
+// uPlot's live legend re-lays out as values change width, which slides every
+// label to its right. Fixed decimal counts here, plus a reserved column width
+// in CSS, keep the readout still. AMP_DECIMALS suits full-scale amplitudes;
+// TIME_DECIMALS resolves 1us, finer than the deepest zoom the viewer allows.
+const AMP_DECIMALS = 3;
+const TIME_DECIMALS = 6;
+const NO_VALUE = '--';
+
 function channelSeries(width) {
   return props.signal.ch.map((_, i) => ({
     label: props.signal.ch.length > 1 ? `ch ${i}` : 'signal',
     stroke: PALETTE[i % PALETTE.length],
-    width
+    width,
+    value: (u, v) => (v == null ? NO_VALUE : v.toFixed(AMP_DECIMALS))
   }));
 }
 
@@ -227,7 +236,9 @@ function mainOpts(width) {
       { label: 'Amplitude (FS)', size: Y_SIZE, labelSize: Y_LABEL }
     ],
     series: [
-      { label: 't', value: (u, v) => (v == null ? '' : v.toFixed(timeDecimals(u.scales.x)) + ' s') },
+      // Fixed precision, unlike the x axis ticks below, which stay adaptive —
+      // ticks can afford to change width, the legend cannot.
+      { label: 't', value: (u, v) => (v == null ? NO_VALUE : v.toFixed(TIME_DECIMALS) + ' s') },
       ...channelSeries(1)
     ]
   };
@@ -360,6 +371,25 @@ defineExpose({
 </style>
 
 <style>
+/* uPlot builds its DOM at runtime, so scoped styles never reach it — these
+   rules are namespaced by hand instead. */
+
+/* The legend is `u-inline u-live`: every cell is an inline-block, so a value
+   that grows by a character pushes every row after it sideways. Reserving the
+   widest each column can get, in a monospace face so `ch` is an exact advance,
+   pins the layout no matter what the cursor reads. */
+.viewer .u-legend .u-value {
+  display: inline-block;
+  min-width: 7ch; /* "-1.000", plus slack */
+  text-align: right;
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-variant-numeric: tabular-nums;
+}
+/* First row is the x series: "123.456789 s" is wider than any amplitude. */
+.viewer .u-legend tr:first-child .u-value {
+  min-width: 13ch;
+}
+
 /* The overview's selection marks the visible window, so it reads as a
    highlight rather than uPlot's default faint grey scrub. */
 .ranger .u-select {
