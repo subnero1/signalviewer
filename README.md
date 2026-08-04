@@ -17,23 +17,13 @@ pnpm dev
 Then open the printed URL and pick a `rec-*.dat` or `signals-*.txt`, or drop one
 anywhere on the window.
 
-| Script | What it does |
-|---|---|
-| `pnpm dev` | Dev server with HMR |
-| `pnpm build` | Normal production build to `dist/` |
-| `pnpm build:static` | **Single self-contained `build/index.html`** — no CDN, no separate assets, opens straight off disk |
-| `pnpm test` | Assertion self-check for the parsing and DSP modules (`node`, no framework) |
+| Script              | What it does                                                                                       |
+|---------------------|----------------------------------------------------------------------------------------------------|
+| `pnpm dev`          | Dev server with HMR                                                                                |
+| `pnpm build` | **Single self-contained `build/index.html`** — no CDN, no separate assets, opens straight off disk |
+| `pnpm test`         | Assertion self-check for the parsing and DSP modules (`node`, no framework)                        |
 
-`build:static` uses
-[vite-plugin-singlefile](https://github.com/richardtallent/vite-plugin-singlefile)
-(enabled only under `--mode singlefile`, so the normal `build` stays a plain
-multi-asset build), then asserts the result is genuinely offline —
-`scripts/check-offline.mjs` fails the build if any external reference survives.
-Opening the output from `file://` issues exactly one request, for the HTML
-itself. Useful for mailing a viewer to someone alongside a capture.
-
-Note the plugin does not inline `public/` assets. There are none today; if any
-are added, the check warns that the output is no longer a single file.
+`build` uses [vite-plugin-singlefile](https://github.com/richardtallent/vite-plugin-singlefile) which generates a single `index.html` with all JS/CSS inlined. Great for sharing a capture with someone else, or for embedding the component in a static site.
 
 ## Using the component elsewhere
 
@@ -93,13 +83,13 @@ avoids this entirely.
 
 ### Props
 
-| Prop | Type | Default | Notes |
-|---|---|---|---|
-| `signal` | `Object` | *required* | See below |
-| `title` | `String` | `''` | Rendered above the plot; the app passes the file name |
-| `ranger` | `Boolean` | `true` | Show the overview strip above the chart |
-| `height` | `Number` | `300` | Main chart height, px |
-| `rangerHeight` | `Number` | `90` | Overview height, px |
+| Prop           | Type      | Default    | Notes                                                 |
+|----------------|-----------|------------|-------------------------------------------------------|
+| `signal`       | `Object`  | *required* | See below                                             |
+| `title`        | `String`  | `''`       | Rendered above the plot; the app passes the file name |
+| `ranger`       | `Boolean` | `true`     | Show the overview strip above the chart               |
+| `height`       | `Number`  | `300`      | Main chart height, px                                 |
+| `rangerHeight` | `Number`  | `90`       | Overview height, px                                   |
 
 ### The `signal` object
 
@@ -157,12 +147,12 @@ using `upconvert()` from `subnerotools`.
 
 Subnero modems run passband at **4× the carrier**, which is the rate used here:
 
-| `fc` | passband |
-|---|---|
-| 12 kHz | 48 kHz |
-| 24 kHz | 96 kHz |
-| 40 kHz | 160 kHz |
-| 64 kHz | 256 kHz |
+| `fc`   | passband |
+|--------|----------|
+| 12 kHz | 48 kHz   |
+| 24 kHz | 96 kHz   |
+| 40 kHz | 160 kHz  |
+| 64 kHz | 256 kHz  |
 
 The rarer 8× mode is deliberately unsupported; it is a one-constant change
 (`PASSBAND_MULTIPLE` in `src/passband.js`) rather than a special case.
@@ -184,15 +174,14 @@ inside the 60 fps budget while wheel-zooming.
 
 ## Layout
 
-| Path | Purpose |
-|---|---|
+| Path                   | Purpose                                            |
+|------------------------|----------------------------------------------------|
 | `src/SignalViewer.vue` | The component. uPlot instances, zoom/pan, overview |
-| `src/peaks.js` | Envelope + raw-window builders. Pure |
-| `src/parse.js` | `signals-*.txt` and `rec-*.dat` readers. Pure |
-| `src/passband.js` | Baseband → passband upconversion. Pure |
-| `src/App.vue` | Demo app: file picking, signal selection, states |
-| `src/selftest.js` | `node src/selftest.js` |
-| `scripts/check-offline.mjs` | Post-build assertion behind `build:static` |
+| `src/peaks.js`         | Envelope + raw-window builders. Pure               |
+| `src/parse.js`         | `signals-*.txt` and `rec-*.dat` readers. Pure      |
+| `src/passband.js`      | Baseband → passband upconversion. Pure             |
+| `src/App.vue`          | Demo app: file picking, signal selection, states   |
+| `src/selftest.js`      | `node src/selftest.js`                             |
 
 ## File formats
 
