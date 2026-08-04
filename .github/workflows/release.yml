@@ -1,0 +1,101 @@
+name: Release
+
+# Semver tags only. The glob is deliberately loose (it would also match
+# v1.2.x); the version step below does the real validation.
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write # gh release create writes to the Releases section
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6 # version comes from packageManager in package.json
+
+      # After pnpm, so the cache backend can find the store. Keyed on the lockfile.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # subnerotools is a private git dependency, pinned in pnpm-lock.yaml as
+      # git+ssh://git@github.com/... . Runners have no SSH key and GITHUB_TOKEN
+      # only covers this repo, so fetch it over HTTPS with a token that can read
+      # subnero1/subnerotools.js. Both URL spellings are rewritten, since pnpm
+      # may emit either.
+      - name: Authenticate the private dependency
+        env:
+          TOKEN: ${{ secrets.DEPS_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::secrets.DEPS_TOKEN is not set — cloning subnerotools will fail."
+            exit 1
+          fi
+          git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "ssh://git@github.com/"
+          git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "git@github.com:"
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm test
+
+      - run: pnpm build
+
+      - name: Derive the version and name the asset
+        id: v
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'; then
+            echo "::error::tag '$TAG' is not a semver version"
+            exit 1
+          fi
+
+          # A tag that disagrees with package.json is usually a mistake, but not
+          # worth failing a release over — the tag is what people cite.
+          pkg=$(node -p "require('./package.json').version")
+          if [ "$pkg" != "$version" ]; then
+            echo "::warning::tag is $version but package.json says $pkg"
+          fi
+
+          asset="signalviewer-${version}.html"
+          test -f build/index.html
+          mv build/index.html "$asset"
+
+          # 1.2.3-rc.1 and friends are prereleases.
+          case "$version" in
+            *-*) prerelease=true ;;
+            *)   prerelease=false ;;
+          esac
+
+          {
+            echo "version=$version"
+            echo "asset=$asset"
+            echo "prerelease=$prerelease"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Releasing $asset ($(du -h "$asset" | cut -f1), prerelease=$prerelease)"
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          ASSET: ${{ steps.v.outputs.asset }}
+          VERSION: ${{ steps.v.outputs.version }}
+          PRERELEASE: ${{ steps.v.outputs.prerelease }}
+        run: |
+          flags=(--generate-notes --verify-tag)
+          [ "$PRERELEASE" = "true" ] && flags+=(--prerelease)
+          gh release create "$TAG" "$ASSET" \
+            --title "Signal Viewer $VERSION" \
+            "${flags[@]}"
