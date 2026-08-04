@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.DS_Store
+*.local
+
+# Sample captures sit alongside the source but are never tracked: the
+# recordings run ~55MB each, and the dumps are noise in diffs.
+rec-*.dat
+signals-*.txt
