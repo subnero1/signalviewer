@@ -10,7 +10,7 @@ importers:
     dependencies:
       subnerotools:
         specifier: github:subnero1/subnerotools.js
-        version: git+ssh://git@github.com/subnero1/subnerotools.js.git#d767f5c7b80b089b14aa962a184c6eb8e8780162
+        version: git+ssh://git@github.com/subnero1/subnerotools.js.git#5a3da8d629a27672dba8484f21f78684b8f2b2c0
       uplot:
         specifier: ^1.6.32
         version: 1.6.32
@@ -468,8 +468,8 @@ packages:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
     engines: {node: '>=0.10.0'}
 
-  subnerotools@git+ssh://git@github.com/subnero1/subnerotools.js.git#d767f5c7b80b089b14aa962a184c6eb8e8780162:
-    resolution: {commit: d767f5c7b80b089b14aa962a184c6eb8e8780162, repo: git@github.com:subnero1/subnerotools.js.git, type: git}
+  subnerotools@git+ssh://git@github.com/subnero1/subnerotools.js.git#5a3da8d629a27672dba8484f21f78684b8f2b2c0:
+    resolution: {commit: 5a3da8d629a27672dba8484f21f78684b8f2b2c0, repo: git@github.com:subnero1/subnerotools.js.git, type: git}
     version: 1.2.0
 
   tinyglobby@0.2.17:
@@ -886,7 +886,7 @@ snapshots:
 
   source-map-js@1.2.1: {}
 
-  subnerotools@git+ssh://git@github.com/subnero1/subnerotools.js.git#d767f5c7b80b089b14aa962a184c6eb8e8780162:
+  subnerotools@git+ssh://git@github.com/subnero1/subnerotools.js.git#5a3da8d629a27672dba8484f21f78684b8f2b2c0:
     dependencies:
       fft.js: 4.0.4
 

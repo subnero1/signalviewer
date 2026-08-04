@@ -8,7 +8,7 @@
 // This lives outside the viewer component on purpose: the component plots real
 // signals and knows nothing about modulation.
 
-import { upconvert } from 'subnerotools/src/dsp.js';
+import { upconvert } from 'subnerotools';
 
 // upconvert() pulse-shapes with rrcosfir(0.25, sps). At beta = 0.25 that filter
 // spans 22 baseband samples, so upconvert pads the input with 11 samples of
