@@ -2,6 +2,7 @@
 import { ref, shallowRef, computed } from 'vue';
 import SignalViewer from './SignalViewer.vue';
 import { parseSignals, readSignal, parseRecording } from './parse.js';
+import { toPassband } from './passband.js';
 
 const dump = shallowRef(null); // parseSignals() result, for signals-*.txt
 const signal = shallowRef(null); // normalized signal currently plotted
@@ -16,10 +17,14 @@ const picked = ref(0);
 const summary = computed(() => {
   const s = signal.value;
   if (!s) return null;
-  return [
-    s.complex ? 'baseband · magnitude' : 'passband',
-    `${s.ch[0].length.toLocaleString()} samples`
-  ];
+  const tags = [`${s.ch[0].length.toLocaleString()} samples`];
+  // Say so when what's plotted isn't what was in the file.
+  if (s.source) {
+    tags.unshift(`baseband ${s.source.fs / 1000} kHz → passband ×${s.source.sps}`);
+  } else {
+    tags.unshift('passband');
+  }
+  return tags;
 });
 
 async function loadFile(file) {
@@ -36,7 +41,7 @@ async function loadFile(file) {
   await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
   try {
     if (file.name.endsWith('.dat')) {
-      signal.value = parseRecording(await file.arrayBuffer());
+      signal.value = toPassband(parseRecording(await file.arrayBuffer()));
     } else {
       const parsed = parseSignals(await file.text());
       if (!parsed.index.length) throw new Error('no RxBasebandSignalNtf records found');
@@ -53,7 +58,7 @@ async function loadFile(file) {
 function pick(i) {
   picked.value = i;
   try {
-    signal.value = readSignal(dump.value, i);
+    signal.value = toPassband(readSignal(dump.value, i));
     error.value = '';
   } catch (err) {
     signal.value = null;
@@ -93,7 +98,6 @@ const shortTime = (ms) => new Date(ms).toISOString().slice(11, 23);
           />
         </svg>
         <h1>Signal Viewer</h1>
-        <span class="dim">UnetStack</span>
       </div>
 
       <div v-if="name" class="source">

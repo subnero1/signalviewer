@@ -5,7 +5,9 @@ import 'uplot/dist/uPlot.min.css';
 import { buildPeaks, rawSlice, extent, RAW_THRESHOLD } from './peaks.js';
 
 const props = defineProps({
-  // Normalized signal from parse.js: { ch: [Float32Array], fs, t0, label, complex }
+  // A real-valued signal: { ch: [Float32Array], fs, t0, label }. Complex
+  // baseband is upconverted to passband by the caller (src/passband.js); this
+  // component plots real samples only.
   signal: { type: Object, required: true },
   title: { type: String, default: '' },
   ranger: { type: Boolean, default: true },

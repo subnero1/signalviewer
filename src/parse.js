@@ -1,13 +1,18 @@
 // Parsers for the two UnetStack signal file formats, per UnetUtils.jl
 // (src/signals.jl and src/recordings.jl).
 //
-// Both produce the same normalized shape, so nothing downstream needs to know
-// which file it came from:
+// Both produce the same normalized shape:
 //
-//   { ch: [Float32Array, ...], fs, t0, label, complex }
+//   { ch: [Float32Array, ...], fs, fc, t0, label, complex }
 //
-// Channel arrays are always real-valued and DC-removed. Complex baseband is
-// reduced to magnitude |x| here.
+// Channel arrays are DC-removed. When `complex` is false they hold real
+// samples. When it is true (a baseband dump with fc != 0) they hold
+// **interleaved I/Q** — [I0, Q0, I1, Q1, ...], twice as long as the sample
+// count — which is the layout subnerotools' upconvert() expects.
+//
+// These parsers deliberately do no DSP: a baseband signal is spectrally
+// shifted, so turning it into something plottable is an upconversion, and that
+// belongs to the caller (see toPassband in App.vue), not to file parsing.
 
 const SIGNAL_RE = /^(\d+)\|RxBasebandSignalNtf:INFORM\[(.*) \((\d+) .*samples\)\]/;
 
@@ -70,28 +75,34 @@ export function readSignal({ lines, index }, i) {
   // sit next to each other: element (sample s, channel c) is at c + channels*s.
   const ch = [];
   for (let c = 0; c < e.channels; c++) {
-    const out = new Float32Array(e.len);
     if (complex) {
-      const re = new Float32Array(e.len);
-      const im = new Float32Array(e.len);
+      // Interleaved I/Q, DC removed on each component independently — the same
+      // complex-mean subtraction UnetUtils applies.
+      const out = new Float32Array(e.len * 2);
       for (let s = 0; s < e.len; s++) {
         const o = (c + e.channels * s) * 8; // ComplexF32 == 8 bytes
-        re[s] = dv.getFloat32(o, false); // ntoh: payload is big-endian
-        im[s] = dv.getFloat32(o + 4, false);
+        out[2 * s] = dv.getFloat32(o, false); // ntoh: payload is big-endian
+        out[2 * s + 1] = dv.getFloat32(o + 4, false);
       }
-      const mre = mean(re);
-      const mim = mean(im);
-      for (let s = 0; s < e.len; s++) out[s] = Math.hypot(re[s] - mre, im[s] - mim);
+      const mre = meanStrided(out, 0);
+      const mim = meanStrided(out, 1);
+      for (let s = 0; s < e.len; s++) {
+        out[2 * s] -= mre;
+        out[2 * s + 1] -= mim;
+      }
+      ch.push(out);
     } else {
+      const out = new Float32Array(e.len);
       for (let s = 0; s < e.len; s++) out[s] = dv.getFloat32((c + e.channels * s) * 4, false);
       subtract(out, mean(out));
+      ch.push(out);
     }
-    ch.push(out);
   }
 
   return {
     ch,
     fs: e.fs,
+    fc: e.fc,
     t0: e.time,
     complex,
     label: `${new Date(e.time).toISOString()} · fc ${e.fc} Hz · fs ${e.fs} Hz · ${e.len} samples`
@@ -173,6 +184,14 @@ function mean(a) {
   let sum = 0;
   for (let i = 0; i < a.length; i++) sum += a[i];
   return a.length ? sum / a.length : 0;
+}
+
+/** Mean of every other element, for one component of an interleaved pair. */
+function meanStrided(a, offset) {
+  let sum = 0;
+  let n = 0;
+  for (let i = offset; i < a.length; i += 2, n++) sum += a[i];
+  return n ? sum / n : 0;
 }
 
 function subtract(a, v) {
