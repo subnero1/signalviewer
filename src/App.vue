@@ -1,6 +1,7 @@
 <script setup>
-import { ref, shallowRef, computed } from 'vue';
+import { ref, shallowRef, computed, watch } from 'vue';
 import SignalViewer from './SignalViewer.vue';
+import Spectrogram from './Spectrogram.vue';
 import { parseSignals, readSignal, parseRecording } from './parse.js';
 import { toPassband } from './passband.js';
 
@@ -12,6 +13,13 @@ const loading = ref(false);
 const dragging = ref(false);
 
 const picked = ref(0);
+
+// The x window every chart shares. Owned here rather than by either chart, so
+// zooming any one of them moves all of them. Reset whenever the signal changes.
+const xwin = ref(null);
+watch(signal, (s) => {
+  xwin.value = s ? { min: 0, max: s.ch[0].length / s.fs } : null;
+});
 // Deliberately does NOT repeat rate / channels / duration — the viewer's own
 // status line already carries those. These are the facts it doesn't show.
 const summary = computed(() => {
@@ -150,7 +158,14 @@ const shortTime = (ms) => new Date(ms).toISOString().slice(11, 23);
           </ul>
         </div>
 
-        <SignalViewer :signal="signal" :title="name" />
+        <SignalViewer :signal="signal" :title="name" v-model:xwin="xwin" />
+        <Spectrogram
+          v-for="(_, i) in signal.ch"
+          :key="i"
+          :signal="signal"
+          :channel="i"
+          v-model:xwin="xwin"
+        />
       </div>
     </main>
   </div>
