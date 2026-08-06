@@ -24,6 +24,8 @@ export function hamming(n) {
   return w;
 }
 
+const HAMMING_NFFT = hamming(NFFT);
+
 /**
  * dB FS spectrogram of ch[i0, i1), max-pooled down to at most maxCols columns.
  *
@@ -44,7 +46,7 @@ export function buildSpecgram(ch, fs, i0, i1, maxCols) {
     fs,
     nperseg: NFFT,
     noverlap: NOVERLAP,
-    window: hamming(NFFT),
+    window: HAMMING_NFFT,
     mode: 'db'
   });
   const { hop, numBins: bins, frequencies } = stream;
