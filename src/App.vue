@@ -1,8 +1,12 @@
 <script setup>
-import { ref, shallowRef, computed } from 'vue';
+import { ref, shallowRef, computed, watch } from 'vue';
 import SignalViewer from './SignalViewer.vue';
+import Spectrogram from './Spectrogram.vue';
 import { parseSignals, readSignal, parseRecording } from './parse.js';
 import { toPassband } from './passband.js';
+// Single source of truth: the build inlines this, so the header can't drift
+// from the released version.
+import { version } from '../package.json';
 
 const dump = shallowRef(null); // parseSignals() result, for signals-*.txt
 const signal = shallowRef(null); // normalized signal currently plotted
@@ -12,6 +16,13 @@ const loading = ref(false);
 const dragging = ref(false);
 
 const picked = ref(0);
+
+// The x window every chart shares. Owned here rather than by either chart, so
+// zooming any one of them moves all of them. Reset whenever the signal changes.
+const xwin = ref(null);
+watch(signal, (s) => {
+  xwin.value = s ? { min: 0, max: s.ch[0].length / s.fs } : null;
+});
 // Deliberately does NOT repeat rate / channels / duration — the viewer's own
 // status line already carries those. These are the facts it doesn't show.
 const summary = computed(() => {
@@ -98,6 +109,7 @@ const shortTime = (ms) => new Date(ms).toISOString().slice(11, 23);
           />
         </svg>
         <h1>Signal Viewer</h1>
+        <span class="dim">v{{ version }}</span>
       </div>
 
       <div v-if="name" class="source">
@@ -150,7 +162,14 @@ const shortTime = (ms) => new Date(ms).toISOString().slice(11, 23);
           </ul>
         </div>
 
-        <SignalViewer :signal="signal" :title="name" />
+        <SignalViewer :signal="signal" :title="name" v-model:xwin="xwin" />
+        <Spectrogram
+          v-for="(_, i) in signal.ch"
+          :key="i"
+          :signal="signal"
+          :channel="i"
+          v-model:xwin="xwin"
+        />
       </div>
     </main>
   </div>

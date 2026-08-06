@@ -3,6 +3,7 @@ import { ref, shallowRef, watch, onMounted, onBeforeUnmount } from 'vue';
 import uPlot from 'uplot';
 import 'uplot/dist/uPlot.min.css';
 import { buildPeaks, rawSlice, extent, RAW_THRESHOLD } from './peaks.js';
+import { Y_SIZE, Y_LABEL, timeDecimals, makeClamp, navPlugin, deferRedraw } from './uplotnav.js';
 
 const props = defineProps({
   // A real-valued signal: { ch: [Float32Array], fs, t0, label }. Complex
@@ -11,9 +12,12 @@ const props = defineProps({
   signal: { type: Object, required: true },
   title: { type: String, default: '' },
   ranger: { type: Boolean, default: true },
+  // Shared x window, two-way — lets other charts (the spectrogram) stay in step.
+  xwin: { type: Object, default: null },
   height: { type: Number, default: 300 },
   rangerHeight: { type: Number, default: 90 }
 });
+const emit = defineEmits(['update:xwin']);
 
 const el = ref(null);
 const rangerEl = ref(null);
@@ -21,12 +25,6 @@ const plot = shallowRef(null);
 const ranger = shallowRef(null);
 const mode = ref('peaks');
 
-// Reserved for the y axis on both charts, so the ranger's plot area lines up
-// with the main one and the selection sits directly over what it selects.
-// The main chart's axis label adds LABEL on top of SIZE; the ranger has no
-// label, so it reserves the sum as plain size instead.
-const Y_SIZE = 76;
-const Y_LABEL = 30;
 const PALETTE = ['#2d7dd2', '#d2452d', '#2da84f', '#9b51e0', '#d99e00', '#00a3a3'];
 
 let chs = null;
@@ -36,23 +34,6 @@ let duration = 0;
 // What the chart is currently showing. Doubles as the loop guard: the redraw
 // below re-enters this path, and an unchanged window means there's nothing to do.
 let applied = { raw: false, min: NaN, max: NaN };
-let swapQueued = false;
-
-/**
- * The swap must not run inside uPlot's commit cycle. uPlot's commit() no-ops
- * while a commit is already queued, and that flag stays set for the whole of
- * _commit — which is where the setScale hook fires. A redraw requested from
- * there is silently dropped. A microtask lands just after the commit finishes
- * and still before paint, so nothing flashes.
- */
-function scheduleSwap(u) {
-  if (swapQueued) return;
-  swapQueued = true;
-  queueMicrotask(() => {
-    swapQueued = false;
-    swapData(u);
-  });
-}
 
 /** Swap between the peak envelope and exact samples as the zoom crosses over. */
 function swapData(u) {
@@ -78,16 +59,8 @@ function swapData(u) {
   u.redraw();
 }
 
-// Keep the window inside the signal and never let it shrink below a few
-// samples — a sub-sample window contains nothing to draw, so the trace would
-// silently vanish.
-const MIN_SAMPLES = 8;
-
-function clamp(min, max) {
-  const span = Math.min(Math.max(max - min, MIN_SAMPLES / props.signal.fs), duration);
-  const lo = Math.max(0, Math.min(duration - span, (min + max) / 2 - span / 2));
-  return { min: lo, max: lo + span };
-}
+const scheduleSwap = deferRedraw(swapData);
+const clamp = makeClamp(() => duration, () => props.signal.fs);
 
 // The overview shades everything outside the main chart's window. Painting it
 // directly, rather than driving uPlot's own select region from both sides,
@@ -119,11 +92,6 @@ const windowShade = {
   }
 };
 
-/** Decimal places needed for two adjacent x ticks to read differently. */
-function timeDecimals({ min, max }) {
-  return Math.max(0, Math.min(9, Math.ceil(-Math.log10((max - min) / 10)) + 1));
-}
-
 // Zero amplitude is the reference every packet is read against, so it gets a
 // darker rule than the regular grid. uPlot has no per-tick grid styling, so
 // it's drawn directly.
@@ -145,53 +113,19 @@ const zeroLine = {
   }
 };
 
-// Wheel to zoom, shift-drag to pan. uPlot ships neither; plain drag-select
-// zoom and double-click reset are its own.
-const navPlugin = {
-  hooks: {
-    ready: (u) => {
-      u.over.addEventListener(
-        'wheel',
-        (e) => {
-          e.preventDefault();
-          const { min, max } = u.scales.x;
-          const at = u.posToVal(u.cursor.left ?? u.over.clientWidth / 2, 'x');
-          const f = e.deltaY < 0 ? 0.75 : 1 / 0.75;
-          u.setScale('x', clamp(at - (at - min) * f, at + (max - at) * f));
-        },
-        { passive: false }
-      );
-
-      u.over.addEventListener(
-        'mousedown',
-        (e) => {
-          if (!e.shiftKey || e.button !== 0) return;
-          e.stopPropagation(); // keep uPlot's drag-select from also firing
-          e.preventDefault();
-          const perPx = (u.scales.x.max - u.scales.x.min) / u.over.clientWidth;
-          const x0 = e.clientX;
-          const { min, max } = u.scales.x;
-          const move = (ev) => {
-            const d = (x0 - ev.clientX) * perPx;
-            u.setScale('x', clamp(min + d, max + d));
-          };
-          const up = () => {
-            window.removeEventListener('mousemove', move);
-            window.removeEventListener('mouseup', up);
-          };
-          window.addEventListener('mousemove', move);
-          window.addEventListener('mouseup', up);
-        },
-        true // capture, so we get it before uPlot's own handler
-      );
-    },
-    setScale: (u, key) => {
-      if (key !== 'x') return;
-      scheduleSwap(u);
-      ranger.value?.redraw(false); // repaint the shaded window, keep its paths
-    }
+// Wheel to zoom, shift-drag to pan live in uplotnav.js, shared with the
+// spectrogram. onScale is what this chart adds: keep the data at the right
+// resolution, repaint the overview, and publish the window to whoever is
+// following it.
+const nav = navPlugin({
+  clamp,
+  onScale: (u) => {
+    scheduleSwap(u);
+    ranger.value?.redraw(false); // repaint the shaded window, keep its paths
+    const { min, max } = u.scales.x;
+    if (min !== props.xwin?.min || max !== props.xwin?.max) emit('update:xwin', { min, max });
   }
-};
+});
 
 // uPlot's live legend re-lays out as values change width, which slides every
 // label to its right. Fixed decimal counts here, plus a reserved column width
@@ -215,7 +149,7 @@ function mainOpts(width) {
     width,
     height: props.height,
     title: props.title || undefined,
-    plugins: [zeroLine, navPlugin],
+    plugins: [zeroLine, nav],
     // Crosshair lines off; the legend still reports values on hover, and the
     // cursor position is still tracked for wheel-zoom anchoring.
     cursor: { x: false, y: false, points: { show: false }, drag: { x: true, y: false } },
@@ -298,7 +232,7 @@ function load() {
 
   // Start at full extent explicitly rather than relying on uPlot's initial
   // auto-range, so the ranger has a well-defined selection from the outset.
-  plot.value.setScale('x', { min: 0, max: duration });
+  plot.value.setScale('x', props.xwin ?? { min: 0, max: duration });
 }
 
 function resize() {
@@ -323,6 +257,17 @@ onBeforeUnmount(() => {
 
 watch(() => [props.signal, props.ranger], load);
 
+// Follow the shared window. The inequality is the loop guard: onScale emits,
+// the owner writes it back here, and this stops rather than emitting again.
+watch(
+  () => props.xwin,
+  (w) => {
+    const u = plot.value;
+    if (!u || !w) return;
+    if (u.scales.x.min !== w.min || u.scales.x.max !== w.max) u.setScale('x', w);
+  }
+);
+
 defineExpose({
   reset: () => plot.value?.setScale('x', { min: 0, max: duration })
 });
@@ -337,7 +282,8 @@ defineExpose({
     <div v-show="ranger" ref="rangerEl" class="ranger"></div>
     <div ref="el" class="plot"></div>
     <div class="hint">
-      drag to zoom &middot; wheel to zoom &middot; shift-drag to pan &middot; double-click to reset
+      drag to zoom &middot; pinch or ctrl-wheel to zoom &middot; shift-drag to pan &middot; double-click to
+      reset
       <template v-if="ranger"> &middot; drag the overview to jump</template>
       <template v-if="signal.ch.length > 1"> &middot; click a channel in the legend to hide it</template>
     </div>

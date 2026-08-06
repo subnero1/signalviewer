@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { parseSignals, readSignal, parseRecording } from './parse.js';
 import { buildPeaks, rawSlice, extent, BUCKET } from './peaks.js';
 import { toPassband, passbandSps } from './passband.js';
+import { hamming, buildSpecgram, dbLimits, NFFT } from './specgram.js';
 
 const close = (a, b, tol = 1e-5) =>
   assert.ok(Math.abs(a - b) < tol, `expected ${b}, got ${a}`);
@@ -238,6 +239,52 @@ function b64(bytes) {
   assert.ok(atFc > 0.1, `carrier present at fc (got ${atFc.toFixed(4)})`);
   assert.ok(atFc > 20 * power(fc / 2), 'energy is at fc, not spread');
   assert.ok(atFc > 20 * power(0), 'not left at DC — it really was upconverted');
+}
+
+// --- spectrogram -------------------------------------------------------------
+{
+  const w = hamming(8);
+  close(w[0], 0.08, 1e-12);
+  close(w[7], 0.08, 1e-12);
+  for (let i = 0; i < 4; i++) close(w[i], w[7 - i], 1e-12); // symmetric
+
+  const fs = 8000;
+  const tone = (f, amp, n = 8192) =>
+    Float32Array.from({ length: n }, (_, i) => amp * Math.cos((2 * Math.PI * f * i) / fs));
+
+  // dB FS is the whole point of the unit: a full-scale sinusoid must read 0 dB
+  // at its own bin, and a half-scale one -6 dB, whatever the window does.
+  const f0 = 1000;
+  const s = buildSpecgram(tone(f0, 1), fs, 0, 8192, 500);
+  const df = fs / NFFT;
+  const peak = Math.round(f0 / df);
+  assert.equal(s.bins, NFFT / 2 + 1);
+  close(s.frequencies[peak], f0, 1e-9);
+
+  const col = (c, b) => s.db[c * s.bins + b];
+  close(col(0, peak), 0, 0.5);
+  assert.ok(col(0, peak) - col(0, peak + 20) > 40, 'energy is at the tone, not spread');
+  close(buildSpecgram(tone(f0, 0.5), fs, 0, 8192, 500).db[peak], -6.02, 0.5);
+
+  // Max pooling: a pooled column is the max of the columns it covers, so a
+  // burst can never be averaged away. Compare a pooled pass against an
+  // unpooled one over the same samples.
+  const burst = tone(f0, 0.01, 8192);
+  burst.set(tone(f0, 1, 512), 2048); // one loud patch
+  const fine = buildSpecgram(burst, fs, 0, 8192, 10000);
+  const coarse = buildSpecgram(burst, fs, 0, 8192, 8);
+  assert.ok(coarse.cols <= 8 && fine.cols > coarse.cols, 'pooling actually pooled');
+  const hottest = (spec) => Math.max(...Array.from({ length: spec.cols }, (_, c) => spec.db[c * spec.bins + peak]));
+  close(hottest(coarse), hottest(fine), 1e-4); // the peak survives pooling exactly
+
+  // Below two segments there is nothing a 256-point transform can say.
+  assert.equal(buildSpecgram(tone(f0, 1), fs, 0, 2 * NFFT - 1, 500), null);
+  assert.ok(buildSpecgram(tone(f0, 1), fs, 0, 2 * NFFT, 500) !== null);
+
+  // Colour limits snap to the 5 dB grid and never span more than crange.
+  assert.deepEqual(dbLimits(Float32Array.from([-3, -22]), 50), [-25, 0]);
+  assert.deepEqual(dbLimits(Float32Array.from([-3, -200]), 50), [-50, 0]);
+  assert.deepEqual(dbLimits(Float32Array.from([-Infinity]), 50), [-50, 0]);
 }
 
 console.log('ok');
