@@ -11,7 +11,7 @@ const props = defineProps({
   channel: { type: Number, default: 0 },
   // Shared x window, two-way. Null until the owner sets it.
   xwin: { type: Object, default: null },
-  height: { type: Number, default: 220 }
+  height: { type: Number, default: 300 }
 });
 const emit = defineEmits(['update:xwin']);
 
