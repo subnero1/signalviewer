@@ -25,6 +25,12 @@ anywhere on the window.
 
 `build` uses [vite-plugin-singlefile](https://github.com/richardtallent/vite-plugin-singlefile) which generates a single `index.html` with all JS/CSS inlined. Great for sharing a capture with someone else, or for embedding the component in a static site.
 
+## Releasing
+
+Push a semver tag such as `v1.2.0`. The `Release` workflow tests and builds the app, attaches the single-file HTML to a GitHub release as `signalviewer-1.2.0.html`, and publishes it to GitHub Pages. Prerelease tags such as `v1.2.0-rc.1` get a release but do not touch the live site. To re-publish an existing tag, run the workflow manually and pick that tag.
+
+Pages needs two one-time settings: Settings → Pages → Source set to "GitHub Actions", and a `v*` tag rule under Settings → Environments → `github-pages` → Deployment branches and tags.
+
 ## Using the component elsewhere
 
 The component is self-contained: it needs **`vue` and `uplot`** and one local
