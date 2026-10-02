@@ -27,22 +27,6 @@ jobs:
           node-version: 22
           cache: pnpm
 
-      # subnerotools is a private git dependency, pinned in pnpm-lock.yaml as
-      # git+ssh://git@github.com/... . Runners have no SSH key and GITHUB_TOKEN
-      # only covers this repo, so fetch it over HTTPS with a token that can read
-      # subnero1/subnerotools.js. Both URL spellings are rewritten, since pnpm
-      # may emit either.
-      - name: Authenticate the private dependency
-        env:
-          TOKEN: ${{ secrets.DEPS_TOKEN }}
-        run: |
-          if [ -z "$TOKEN" ]; then
-            echo "::error::secrets.DEPS_TOKEN is not set — cloning subnerotools will fail."
-            exit 1
-          fi
-          git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "ssh://git@github.com/"
-          git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "git@github.com:"
-
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm test

@@ -8,9 +8,9 @@ importers:
 
   .:
     dependencies:
-      subnerotools:
-        specifier: github:subnero1/subnerotools.js
-        version: git+ssh://git@github.com/subnero1/subnerotools.js.git#5a3da8d629a27672dba8484f21f78684b8f2b2c0
+      subnerodsp:
+        specifier: github:subnero1/subnerodsp.js#v1.0.0
+        version: https://codeload.github.com/subnero1/subnerodsp.js/tar.gz/fd249247eb59486ef8fa4eb6483e5c65d867891b
       uplot:
         specifier: ^1.6.32
         version: 1.6.32
@@ -477,9 +477,9 @@ packages:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
     engines: {node: '>=0.10.0'}
 
-  subnerotools@git+ssh://git@github.com/subnero1/subnerotools.js.git#5a3da8d629a27672dba8484f21f78684b8f2b2c0:
-    resolution: {commit: 5a3da8d629a27672dba8484f21f78684b8f2b2c0, repo: git@github.com:subnero1/subnerotools.js.git, type: git}
-    version: 1.2.0
+  subnerodsp@https://codeload.github.com/subnero1/subnerodsp.js/tar.gz/fd249247eb59486ef8fa4eb6483e5c65d867891b:
+    resolution: {gitHosted: true, integrity: sha512-8Y6NNemgfGDG6Yc/6umlafLPpRPqw8q49nhKh7Mbg5uj/DM24tTaAAy+UeOhw+9YL/xIcl+CXvWKrcL5G528Tg==, tarball: https://codeload.github.com/subnero1/subnerodsp.js/tar.gz/fd249247eb59486ef8fa4eb6483e5c65d867891b}
+    version: 1.0.0
 
   tinyglobby@0.2.17:
     resolution: {integrity: sha512-wXR/dYpcqKmfWpEdZjiKJOwCNFndD0DMnrW/cYjVGttEkBfVgcLFHoNrlj47mjOVic9yyNu65alsgF4NQyTa2g==}
@@ -903,7 +903,7 @@ snapshots:
 
   source-map-js@1.2.1: {}
 
-  subnerotools@git+ssh://git@github.com/subnero1/subnerotools.js.git#5a3da8d629a27672dba8484f21f78684b8f2b2c0:
+  subnerodsp@https://codeload.github.com/subnero1/subnerodsp.js/tar.gz/fd249247eb59486ef8fa4eb6483e5c65d867891b:
     dependencies:
       fft.js: 4.0.4
 

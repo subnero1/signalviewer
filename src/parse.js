@@ -8,7 +8,7 @@
 // Channel arrays are DC-removed. When `complex` is false they hold real
 // samples. When it is true (a baseband dump with fc != 0) they hold
 // **interleaved I/Q** — [I0, Q0, I1, Q1, ...], twice as long as the sample
-// count — which is the layout subnerotools' upconvert() expects.
+// count — which is the layout subnerodsp's upconvert() expects.
 //
 // These parsers deliberately do no DSP: a baseband signal is spectrally
 // shifted, so turning it into something plottable is an upconversion, and that

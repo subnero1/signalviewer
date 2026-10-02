@@ -1,6 +1,6 @@
 // Short-time spectra for the spectrogram view.
 //
-// No DSP is implemented here beyond a window function: subnerotools already
+// No DSP is implemented here beyond a window function: subnerodsp already
 // ships a SciPy/SignalAnalysis.jl-validated STFT. Its `db` mode is already
 // dB FS — scaleInto() computes 20*log10(|X| * 2 / windowSum), and a windowed
 // full-scale sinusoid has |X| = A*windowSum/2, so the peak bin reads
@@ -8,7 +8,7 @@
 //
 // Defaults match SignalAnalysis.jl's specgram recipe (ext/PlotsExt.jl).
 
-import { SpectrogramStream } from 'subnerotools';
+import { SpectrogramStream } from 'subnerodsp';
 
 export const NFFT = 256;
 export const NOVERLAP = NFFT / 2;
@@ -16,7 +16,7 @@ export const CRANGE = 50; // dB shown below the loudest bin
 
 /**
  * Symmetric Hamming window, matching DSP.jl's hamming() — SignalAnalysis.jl's
- * specgram default. subnerotools only builds Hann, but takes any window array.
+ * specgram default. subnerodsp only builds Hann, but takes any window array.
  */
 export function hamming(n) {
   const w = new Float64Array(n);

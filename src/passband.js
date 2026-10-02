@@ -3,12 +3,12 @@
 // A baseband dump (fc != 0) is not just complex, it has been spectrally shifted
 // down to DC. Plotting |x| would show only the envelope and throw the carrier
 // away, so what actually gets plotted is the real passband signal the modem
-// heard, recovered with subnerotools' upconvert().
+// heard, recovered with subnerodsp's upconvert().
 //
 // This lives outside the viewer component on purpose: the component plots real
 // signals and knows nothing about modulation.
 
-import { upconvert } from 'subnerotools';
+import { upconvert } from 'subnerodsp';
 
 // upconvert() pulse-shapes with rrcosfir(0.25, sps). At beta = 0.25 that filter
 // spans 22 baseband samples, so upconvert pads the input with 11 samples of

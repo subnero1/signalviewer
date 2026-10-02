@@ -28,7 +28,7 @@ anywhere on the window.
 ## Using the component elsewhere
 
 The component is self-contained: it needs **`vue` and `uplot`** and one local
-module, `peaks.js`. It does not depend on the parsers or on `subnerotools`.
+module, `peaks.js`. It does not depend on the parsers or on `subnerodsp`.
 
 ### Option A — copy it in (simplest)
 
@@ -67,7 +67,7 @@ Your build needs `@vitejs/plugin-vue` (or equivalent) since this imports a raw
 `.vue` file. Import the subpath — `package.json` has no `exports` map, so a bare
 `import 'signalviewer'` will not resolve.
 
-**This package depends on `subnerotools` via git, and pnpm rejects git
+**This package depends on `subnerodsp` via git, and pnpm rejects git
 sub-dependencies by default.** The install fails with `ERR_PNPM_EXOTIC_SUBDEP`
 unless the consuming project opts in, in `pnpm-workspace.yaml` (the `.npmrc`
 equivalent is *not* honoured):
@@ -76,7 +76,7 @@ equivalent is *not* honoured):
 blockExoticSubdeps: false
 ```
 
-Only `passband.js` needs `subnerotools`. If you just want the chart, Option A
+Only `passband.js` needs `subnerodsp`. If you just want the chart, Option A
 avoids this entirely.
 
 ## Component API
@@ -143,7 +143,7 @@ parsers return.
 A baseband dump with `fc != 0` is complex **and** spectrally shifted down to DC.
 Plotting its magnitude would show only the envelope and throw the carrier away.
 `toPassband` upconverts it back to the real passband signal the modem heard,
-using `upconvert()` from `subnerotools`.
+using `upconvert()` from `subnerodsp`.
 
 Subnero modems run passband at **4× the carrier**, which is the rate used here:
 
